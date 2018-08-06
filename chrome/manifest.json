@@ -1,0 +1,26 @@
+{
+    "name": "Jike Notifications",
+    "version": "1.0",
+    "description": "Notify user when jike app have unread notifications.",
+    "background": {
+        "scripts": ["background.js"],
+        "persistent": true
+    },
+    "content_scripts": [{
+        "matches": [
+            "https://web.okjike.com/feed/*", "https://web.ruguoapp.com/feed/*", "http://web.okjike.com/feed/*", "http://web.ruguoapp.com/feed/*"
+        ],
+        "js": ["contentscript.js"]
+    }],
+    "permissions": [
+        "storage",
+        "alarms",
+        "notifications",
+        "tabs",
+        "https://app.jike.ruguoapp.com/",
+        "https://pic-txcdn.ruguoapp.com/",
+        "https://cdn.ruguoapp.com/",
+        "https://wx.qlogo.cn/"
+    ],
+    "manifest_version": 2
+}
