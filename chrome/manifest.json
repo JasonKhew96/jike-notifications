@@ -1,7 +1,7 @@
 {
     "name": "Jike Notifications",
     "version": "1.0",
-    "description": "Notify user when jike app have unread notifications.",
+    "description": "Notify user when jike app has unread notifications.",
     "background": {
         "scripts": ["background.js"],
         "persistent": true
