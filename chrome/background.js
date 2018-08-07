@@ -100,11 +100,17 @@
         title = data.actionItem.users[0].screenName + ' 回答了你的问题'
         message = data.actionItem.content || '[图片]'
         break
+      case 'REPLIED_TO_ANSWER_COMMENT':
+        iconUrl = data.referenceItem.referenceImageUrl || data.actionItem.users[0].profileImageUrl
+        title = data.actionItem.users[0].screenName + ' 回复了你的评论'
+        message = (data.actionItem.content || '[图片]') + ' // ' + data.referenceItem.content
+        break
       default:
         iconUrl = jikeLogo
         title = '暂时不支持的消息'
         message = '请在即刻APP查看'
-        console.log('Not supported: ' + data)
+        console.log('Not supported: ')
+        console.log(data)
         break
     }
     chrome.notifications.create(data.linkUrl, {
@@ -159,31 +165,43 @@
 
   chrome.notifications.onClicked.addListener(function (notificationId) {
     let url, id
-    if (!notificationId.startsWith('jike')) return
-    if (notificationId.includes('originalPost')) {
+    if (!notificationId.startsWith('jike://')) return
+    if (notificationId.includes('/originalPost/')) {
       id = notificationId.split('/originalPost/')[1]
       url = 'https://web.okjike.com/post-detail/' + id + '/originalPost'
-    } else if (notificationId.includes('user')) {
+    } else if (notificationId.includes('/user/')) {
       id = notificationId.split('/user/')[1]
       url = 'https://web.okjike.com/user/' + id
-    } else if (notificationId.includes('comment')) {
+    } else if (notificationId.includes('/comment/')) {
       id = notificationId.split('&targetId=')[1]
       let commentId = notificationId.split('?targetType=')[0].split('/comment/')[1]
-      let post = notificationId.includes('ORIGINAL_POST') ? 'originalPost' : 'repost'
-      url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
-    } else if (notificationId.includes('repost')) {
+      let post
+      if (notificationId.includes('ORIGINAL_POST')) {
+        post = 'originalPost'
+        url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
+      } else if (notificationId.includes('REPOST')) {
+        post = 'repost'
+        url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
+      } else {
+        console.log('Not supported link: ')
+        console.log(notificationId)
+      }
+    } else if (notificationId.includes('/repost/')) {
       id = notificationId.split('/repost/')[1]
       url = 'https://web.okjike.com/post-detail/' + id + '/repost'
     } else {
-      console.log('Not supported link: ' + notificationId)
+      console.log('Not supported link: ')
+      console.log(notificationId)
     }
-    chrome.tabs.create({
-      url
-    })
+    if (url) {
+      chrome.tabs.create({
+        url
+      })
+    }
     chrome.notifications.clear(notificationId)
   })
 
   chrome.alarms.create('fetcher', {
-    periodInMinutes: 5
+    periodInMinutes: 1
   })
 })()
