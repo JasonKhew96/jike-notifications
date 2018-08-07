@@ -41,7 +41,7 @@
       case 'LIKE_PERSONAL_UPDATE_COMMENT':
         iconUrl = data.referenceItem.referenceImageUrl || data.actionItem.users[0].profileImageUrl
         if (data.actionItem.usersCount === 1) {
-          title = data.actionItem.users[0].screenName + '赞了你的评论'
+          title = data.actionItem.users[0].screenName + ' 赞了你的评论'
         } else {
           title = data.actionItem.users[0].screenName + ' 等' + data.actionItem.usersCount + '人赞了你的评论'
         }
