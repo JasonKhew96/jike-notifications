@@ -1,6 +1,7 @@
 (function () {
   const jikeLogo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDAgNDAiPjxkZWZzPjxyZWN0IGlkPSJhIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHJ4PSIyMCIvPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkwLjM3NCUiIHgyPSI3OC42MDQlIiB5MT0iNjguMTk4JSIgeTI9IjY4LjE5OCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1RUMxRjkiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1RUI4RjkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjx1c2UgZmlsbD0iI0ZGRTQxMSIgeGxpbms6aHJlZj0iI2EiLz48cGF0aCBmaWxsPSJ1cmwoI2IpIiBkPSJNLjk4OSAyMC44M2EuNTIuNTIgMCAwIDEtLjA1NC4wMWwxLjcyIDEuNjc3YzEuNjU0LS4xNTIgMy4yNzMtLjU4NyA0LjQ2NS0xLjAxOCAxLjE5My0uNDMyIDIuMTc0LS45ODcgMi45NDUtMS42NjdhNi4yMjcgNi4yMjcgMCAwIDAgMS43MTMtMi40NWMuMzctLjk1NC41NTUtMi4wNTUuNTU1LTMuMzAzVjcuOTE1YzAtMS4zOS4wMDUtMi41OTUuMDE1LTMuNjE0LjAxLTEuMDIuMDE2LTEuOTQuMDE2LTIuNzYzTDEwLjQ0LjAwM2MwIC44MjEtLjAwNSAxLjc0MS0uMDE1IDIuNzYtLjAxIDEuMDE5LS4wMTUgMi4yMjQtLjAxNSAzLjYxNHY2LjE2NGMwIDEuMjQ4LS4xODUgMi4zNDktLjU1NSAzLjMwMmE2LjIyNyA2LjIyNyAwIDAgMS0xLjcxMyAyLjQ1Yy0uNzcuNjgtMS43NTIgMS4yMzYtMi45NDUgMS42NjctMS4xNzcuNDI2LTIuNTguNzE2LTQuMjA4Ljg3eiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIuOTQ5IDkuMzU5KSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0yMy4zOSA5LjM1OWMwIC44MjItLjAwNiAxLjc0My0uMDE2IDIuNzYyLS4wMSAxLjAyLS4wMTUgMi4yMjUtLjAxNSAzLjYxNVYyMS45YzAgMS4yNDgtLjE4NSAyLjM0OS0uNTU2IDMuMzAyYTYuMjI3IDYuMjI3IDAgMCAxLTEuNzEyIDIuNDVjLS43NzEuNjgtMS43NTMgMS4yMzYtMi45NDUgMS42NjctMS4xOTIuNDMxLTIuNjE1LjcyMy00LjI2OS44NzVsLS45MjgtMy45ODdhMTYuNzIgMTYuNzIgMCAwIDAgMi4yMzctLjQwNCA0LjY2IDQuNjYgMCAwIDAgMS42NzQtLjc5OWMuNTA3LS4zOTUuODktLjg5MiAxLjE1LTEuNDkxLjI1OC0uNTk5LjM4Ny0xLjM5LjM4Ny0yLjM3NCAwLS43OTIuMDAzLTEuNjI2LjAwOC0yLjUwNC4wMDUtLjg3Ny4wMDctMS43ODMuMDA3LTIuNzE2IDAtMS42MjQtLjAwNy0yLjkxNS0uMDIyLTMuODc0LS4wMTYtLjk1OS0uMDI4LTEuODU0LS4wMzgtMi42ODZoNS4wMzd6Ii8+PC9nPjwvc3ZnPg=='
-  let token, notifyId
+  let token
+  let unreadCount = 0
   function getSavedToken () {
     chrome.storage.local.get(['token'], function (result) {
       token = result.token
@@ -12,18 +13,6 @@
       token: value
     })
   };
-
-  function getSavedNotifyId () {
-    chrome.storage.local.get(['notifyId'], function (result) {
-      notifyId = result.notifyId
-    })
-  };
-
-  function setSavedNotifyId (value) {
-    chrome.storage.local.set({
-      notifyId: value
-    })
-  }
 
   function processNotification (data) {
     let iconUrl, title, message, contextMessage
@@ -122,6 +111,25 @@
     })
   }
 
+  function getUnreadCount () {
+    let req = {
+      'method': 'GET',
+      'headers': {
+        'x-jike-app-auth-jwt': token,
+        'app-version': '4.7.0'
+      }
+    }
+    window.fetch('https://app.jike.ruguoapp.com/1.0/notifications/unreadCount', req)
+      .then(function (resp) {
+        return resp.json()
+      }).then(function (resp) {
+        unreadCount = resp.data.unreadCount
+        if (unreadCount > 0) {
+          notifyWorker()
+        }
+      })
+  }
+
   function notifyWorker () {
     let req = {
       'method': 'GET',
@@ -135,20 +143,17 @@
         return resp.json()
       }).then(function (resp) {
         let datas = resp.data
-        getSavedNotifyId()
-        for (let i = 0; i < datas.length; i++) {
-          if (datas[i].id === notifyId) break
+        for (let i = 0; i < unreadCount; i++) {
           let data = datas[i]
           processNotification(data)
         }
-        setSavedNotifyId(datas[0].id)
       })
   }
 
   chrome.alarms.onAlarm.addListener(function (alarm) {
     getSavedToken()
     if (alarm.name === 'fetcher' && token) {
-      notifyWorker()
+      getUnreadCount()
     }
   })
 
