@@ -111,25 +111,6 @@
     })
   }
 
-  function getUnreadCount () {
-    let req = {
-      'method': 'GET',
-      'headers': {
-        'x-jike-app-auth-jwt': token,
-        'app-version': '4.7.0'
-      }
-    }
-    window.fetch('https://app.jike.ruguoapp.com/1.0/notifications/unreadCount', req)
-      .then(function (resp) {
-        return resp.json()
-      }).then(function (resp) {
-        unreadCount = resp.data.unreadCount
-        if (unreadCount > 0) {
-          notifyWorker()
-        }
-      })
-  }
-
   function notifyWorker () {
     let req = {
       'method': 'GET',
@@ -149,13 +130,6 @@
         }
       })
   }
-
-  chrome.alarms.onAlarm.addListener(function (alarm) {
-    getSavedToken()
-    if (alarm.name === 'fetcher' && token) {
-      getUnreadCount()
-    }
-  })
 
   chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
@@ -206,7 +180,31 @@
     chrome.notifications.clear(notificationId)
   })
 
-  chrome.alarms.create('fetcher', {
-    periodInMinutes: 1
-  })
+  let socket
+
+  let scheduleJob = setInterval(function () {
+    console.log('scheduleJob')
+    if (!token) {
+      getSavedToken()
+    } else {
+      socket = io('wss://msgcenter.jike.ruguoapp.com?jike_access_token=' + token)
+      socket.on('connect', function () {
+        getSavedToken()
+        console.log('connect')
+      })
+      socket.on('message', function (data) {
+        getSavedToken()
+        if (!token) return
+        if (data.type === 'NOTIFICATION') {
+          unreadCount = data.data.unreadCount
+          notifyWorker()
+        } else if (data.type === 'PERSONAL_UPDATE') {
+          // CREATE_ORIGINAL_POST, PERSONAL_UPDATE_REPOST, CREATE_REPOST, SUBSCRIBE_TOPIC, USER_FOLLOW
+          console.log(data.data.actor.screenName, data.data.action)
+        }
+      })
+      socket.on('disconnect', function () { console.log('disconnect') })
+      clearInterval(scheduleJob)
+    }
+  }, 10000)
 })()

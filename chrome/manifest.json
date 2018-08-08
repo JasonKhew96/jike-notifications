@@ -3,7 +3,10 @@
     "version": "1.0",
     "description": "Notify user when jike app has unread notifications.",
     "background": {
-        "scripts": ["background.js"],
+        "scripts": [
+          "socket.io.js",
+          "background.js"
+        ],
         "persistent": true
     },
     "content_scripts": [{
@@ -14,7 +17,6 @@
     }],
     "permissions": [
         "storage",
-        "alarms",
         "notifications",
         "tabs",
         "https://app.jike.ruguoapp.com/",
