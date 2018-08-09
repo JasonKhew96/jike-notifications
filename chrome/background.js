@@ -1,20 +1,85 @@
 (function () {
+  // 私聊 GET https://app.jike.ruguoapp.com/1.0/conversations/unreadStats
+  // 小秘书 POST https://support.jike.ruguoapp.com/conversation.history
   const jikeLogo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDAgNDAiPjxkZWZzPjxyZWN0IGlkPSJhIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHJ4PSIyMCIvPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkwLjM3NCUiIHgyPSI3OC42MDQlIiB5MT0iNjguMTk4JSIgeTI9IjY4LjE5OCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1RUMxRjkiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1RUI4RjkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjx1c2UgZmlsbD0iI0ZGRTQxMSIgeGxpbms6aHJlZj0iI2EiLz48cGF0aCBmaWxsPSJ1cmwoI2IpIiBkPSJNLjk4OSAyMC44M2EuNTIuNTIgMCAwIDEtLjA1NC4wMWwxLjcyIDEuNjc3YzEuNjU0LS4xNTIgMy4yNzMtLjU4NyA0LjQ2NS0xLjAxOCAxLjE5My0uNDMyIDIuMTc0LS45ODcgMi45NDUtMS42NjdhNi4yMjcgNi4yMjcgMCAwIDAgMS43MTMtMi40NWMuMzctLjk1NC41NTUtMi4wNTUuNTU1LTMuMzAzVjcuOTE1YzAtMS4zOS4wMDUtMi41OTUuMDE1LTMuNjE0LjAxLTEuMDIuMDE2LTEuOTQuMDE2LTIuNzYzTDEwLjQ0LjAwM2MwIC44MjEtLjAwNSAxLjc0MS0uMDE1IDIuNzYtLjAxIDEuMDE5LS4wMTUgMi4yMjQtLjAxNSAzLjYxNHY2LjE2NGMwIDEuMjQ4LS4xODUgMi4zNDktLjU1NSAzLjMwMmE2LjIyNyA2LjIyNyAwIDAgMS0xLjcxMyAyLjQ1Yy0uNzcuNjgtMS43NTIgMS4yMzYtMi45NDUgMS42NjctMS4xNzcuNDI2LTIuNTguNzE2LTQuMjA4Ljg3eiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIuOTQ5IDkuMzU5KSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0yMy4zOSA5LjM1OWMwIC44MjItLjAwNiAxLjc0My0uMDE2IDIuNzYyLS4wMSAxLjAyLS4wMTUgMi4yMjUtLjAxNSAzLjYxNVYyMS45YzAgMS4yNDgtLjE4NSAyLjM0OS0uNTU2IDMuMzAyYTYuMjI3IDYuMjI3IDAgMCAxLTEuNzEyIDIuNDVjLS43NzEuNjgtMS43NTMgMS4yMzYtMi45NDUgMS42NjctMS4xOTIuNDMxLTIuNjE1LjcyMy00LjI2OS44NzVsLS45MjgtMy45ODdhMTYuNzIgMTYuNzIgMCAwIDAgMi4yMzctLjQwNCA0LjY2IDQuNjYgMCAwIDAgMS42NzQtLjc5OWMuNTA3LS4zOTUuODktLjg5MiAxLjE1LTEuNDkxLjI1OC0uNTk5LjM4Ny0xLjM5LjM4Ny0yLjM3NCAwLS43OTIuMDAzLTEuNjI2LjAwOC0yLjUwNC4wMDUtLjg3Ny4wMDctMS43ODMuMDA3LTIuNzE2IDAtMS42MjQtLjAwNy0yLjkxNS0uMDIyLTMuODc0LS4wMTYtLjk1OS0uMDI4LTEuODU0LS4wMzgtMi42ODZoNS4wMzd6Ii8+PC9nPjwvc3ZnPg=='
-  let token
+  let token, socket
   let unreadCount = 0
+
+  // 获取token
   function getSavedToken () {
     chrome.storage.local.get(['token'], function (result) {
       token = result.token
     })
-  };
+  }
 
+  // 储存token
   function setSavedToken (value) {
     chrome.storage.local.set({
       token: value
     })
-  };
+  }
 
-  function processNotification (data) {
+  // 检查是否有token，然后链接websocket
+  let scheduleJob = setInterval(function () {
+    console.log('scheduleJob')
+    if (!token) {
+      getSavedToken()
+    } else {
+      socket = io('wss://msgcenter.jike.ruguoapp.com?jike_access_token=' + token)
+      socket.on('connect', function () {
+        console.log('connect')
+      })
+      socket.on('message', processMessage)
+      socket.on('disconnect', function () { console.log('disconnect') })
+      clearInterval(scheduleJob)
+    }
+  }, 10000)
+
+  // 注册监听器
+  // Win10原生通知点击后触发onButtonClicked，浏览器通知触发onClicked......
+  window.addEventListener('load', function () {
+    chrome.runtime.onMessage.addListener(tokenReceived)
+    chrome.notifications.onClosed.addListener(notificationClosed)
+    chrome.notifications.onClicked.addListener(notificationClicked)
+    chrome.notifications.onButtonClicked.addListener(notificationBtnClick)
+  })
+
+  // 处理链接
+  function processUrl (jikeLink) {
+    let url, id
+    if (!jikeLink.startsWith('jike://')) return ''
+    if (jikeLink.includes('/originalPost/')) {
+      id = jikeLink.split('/originalPost/')[1]
+      url = 'https://web.okjike.com/post-detail/' + id + '/originalPost'
+    } else if (jikeLink.includes('/user/')) {
+      id = jikeLink.split('/user/')[1]
+      url = 'https://web.okjike.com/user/' + id
+    } else if (jikeLink.includes('/comment/')) {
+      id = jikeLink.split('&targetId=')[1]
+      let commentId = jikeLink.split('?targetType=')[0].split('/comment/')[1]
+      let post
+      if (jikeLink.includes('ORIGINAL_POST')) {
+        post = 'originalPost'
+        url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
+      } else if (jikeLink.includes('REPOST')) {
+        post = 'repost'
+        url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
+      } else {
+        console.log('Not supported link: ')
+        console.log(jikeLink)
+      }
+    } else if (jikeLink.includes('/repost/')) {
+      id = jikeLink.split('/repost/')[1]
+      url = 'https://web.okjike.com/post-detail/' + id + '/repost'
+    } else {
+      console.log('Not supported link: ')
+      console.log(jikeLink)
+    }
+    return url
+  }
+
+  // 处理通知列表
+  function processData (data) {
     let iconUrl, title, message, contextMessage
     contextMessage = new Date(data.createdAt).toLocaleString('zh-cn')
     switch (data.type) {
@@ -102,7 +167,7 @@
         console.log(data)
         break
     }
-    chrome.notifications.create(data.linkUrl, {
+    chrome.notifications.create(processUrl(data.linkUrl), {
       type: 'basic',
       iconUrl,
       title,
@@ -111,12 +176,13 @@
     })
   }
 
-  function notifyWorker () {
+  // 获取通知列表
+  function getNotifications () {
     let req = {
       'method': 'GET',
       'headers': {
         'x-jike-app-auth-jwt': token,
-        'app-version': '4.7.0'
+        'app-version': '4.10.0'
       }
     }
     window.fetch('https://app.jike.ruguoapp.com/1.0/notifications/list', req)
@@ -126,85 +192,63 @@
         let datas = resp.data
         for (let i = 0; i < unreadCount; i++) {
           let data = datas[i]
-          processNotification(data)
+          processData(data)
         }
       })
   }
 
-  chrome.runtime.onMessage.addListener(
-    function (request, sender, sendResponse) {
-      if (request.token) {
-        setSavedToken(request.token)
-        sendResponse({
-          callback: request.token
-        })
-      }
+  // 处理websocket返回的信息
+  function processMessage (data) {
+    getSavedToken()
+    if (!token) return
+    if (data.type === 'NOTIFICATION') {
+      unreadCount = data.data.unreadCount
+      getNotifications()
+    } else if (data.type === 'PERSONAL_UPDATE') {
+      // CREATE_ORIGINAL_POST, PERSONAL_UPDATE_REPOST, REPOST, CREATE_REPOST, SUBSCRIBE_TOPIC, USER_FOLLOW, CREATE_QUESTION, CREATE_ANSWER
+      console.log(data.data.id, data.data.actor.screenName, data.data.action)
+      // chrome.notifications.create(data.data.id, {
+      //   type: 'basic',
+      //   iconUrl: jikeLogo,
+      //   title: data.data.actor.screenName,
+      //   message: data.data.action
+      // })
     }
-  )
+  }
 
-  chrome.notifications.onClicked.addListener(function (notificationId) {
-    let url, id
-    if (!notificationId.startsWith('jike://')) return
-    if (notificationId.includes('/originalPost/')) {
-      id = notificationId.split('/originalPost/')[1]
-      url = 'https://web.okjike.com/post-detail/' + id + '/originalPost'
-    } else if (notificationId.includes('/user/')) {
-      id = notificationId.split('/user/')[1]
-      url = 'https://web.okjike.com/user/' + id
-    } else if (notificationId.includes('/comment/')) {
-      id = notificationId.split('&targetId=')[1]
-      let commentId = notificationId.split('?targetType=')[0].split('/comment/')[1]
-      let post
-      if (notificationId.includes('ORIGINAL_POST')) {
-        post = 'originalPost'
-        url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
-      } else if (notificationId.includes('REPOST')) {
-        post = 'repost'
-        url = 'https://web.okjike.com/post-detail/' + id + '/' + post + '?commentId=' + commentId
-      } else {
-        console.log('Not supported link: ')
-        console.log(notificationId)
-      }
-    } else if (notificationId.includes('/repost/')) {
-      id = notificationId.split('/repost/')[1]
-      url = 'https://web.okjike.com/post-detail/' + id + '/repost'
-    } else {
-      console.log('Not supported link: ')
-      console.log(notificationId)
+  // 得到token
+  function tokenReceived (request, sender, sendResponse) {
+    if (request.token) {
+      console.log('Token: ' + request.token)
+      setSavedToken(request.token)
+      sendResponse({
+        callback: request.token
+      })
     }
-    if (url) {
+  }
+
+  // 通知关闭
+  function notificationClosed (notID, bByUser) {
+    console.log("The notification '" + notID + "' was closed" + (bByUser ? ' by the user' : ''))
+  }
+
+  // 通知被点击
+  function notificationClicked (notID) {
+    if (notID) {
       chrome.tabs.create({
-        url
+        url: notID
       })
     }
-    chrome.notifications.clear(notificationId)
-  })
+    chrome.notifications.clear(notID)
+  }
 
-  let socket
-
-  let scheduleJob = setInterval(function () {
-    console.log('scheduleJob')
-    if (!token) {
-      getSavedToken()
-    } else {
-      socket = io('wss://msgcenter.jike.ruguoapp.com?jike_access_token=' + token)
-      socket.on('connect', function () {
-        getSavedToken()
-        console.log('connect')
+  // 通知按钮被点击
+  function notificationBtnClick (notID, iBtn) {
+    if (notID && iBtn === -1) {
+      chrome.tabs.create({
+        url: notID
       })
-      socket.on('message', function (data) {
-        getSavedToken()
-        if (!token) return
-        if (data.type === 'NOTIFICATION') {
-          unreadCount = data.data.unreadCount
-          notifyWorker()
-        } else if (data.type === 'PERSONAL_UPDATE') {
-          // CREATE_ORIGINAL_POST, PERSONAL_UPDATE_REPOST, CREATE_REPOST, SUBSCRIBE_TOPIC, USER_FOLLOW
-          console.log(data.data.actor.screenName, data.data.action)
-        }
-      })
-      socket.on('disconnect', function () { console.log('disconnect') })
-      clearInterval(scheduleJob)
     }
-  }, 10000)
+    chrome.notifications.clear(notID)
+  }
 })()
