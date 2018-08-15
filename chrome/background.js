@@ -2,7 +2,7 @@
   // 私聊 GET https://app.jike.ruguoapp.com/1.0/conversations/unreadStats
   // 小秘书 POST https://support.jike.ruguoapp.com/conversation.history
   const jikeLogo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDAgNDAiPjxkZWZzPjxyZWN0IGlkPSJhIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHJ4PSIyMCIvPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkwLjM3NCUiIHgyPSI3OC42MDQlIiB5MT0iNjguMTk4JSIgeTI9IjY4LjE5OCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1RUMxRjkiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1RUI4RjkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjx1c2UgZmlsbD0iI0ZGRTQxMSIgeGxpbms6aHJlZj0iI2EiLz48cGF0aCBmaWxsPSJ1cmwoI2IpIiBkPSJNLjk4OSAyMC44M2EuNTIuNTIgMCAwIDEtLjA1NC4wMWwxLjcyIDEuNjc3YzEuNjU0LS4xNTIgMy4yNzMtLjU4NyA0LjQ2NS0xLjAxOCAxLjE5My0uNDMyIDIuMTc0LS45ODcgMi45NDUtMS42NjdhNi4yMjcgNi4yMjcgMCAwIDAgMS43MTMtMi40NWMuMzctLjk1NC41NTUtMi4wNTUuNTU1LTMuMzAzVjcuOTE1YzAtMS4zOS4wMDUtMi41OTUuMDE1LTMuNjE0LjAxLTEuMDIuMDE2LTEuOTQuMDE2LTIuNzYzTDEwLjQ0LjAwM2MwIC44MjEtLjAwNSAxLjc0MS0uMDE1IDIuNzYtLjAxIDEuMDE5LS4wMTUgMi4yMjQtLjAxNSAzLjYxNHY2LjE2NGMwIDEuMjQ4LS4xODUgMi4zNDktLjU1NSAzLjMwMmE2LjIyNyA2LjIyNyAwIDAgMS0xLjcxMyAyLjQ1Yy0uNzcuNjgtMS43NTIgMS4yMzYtMi45NDUgMS42NjctMS4xNzcuNDI2LTIuNTguNzE2LTQuMjA4Ljg3eiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIuOTQ5IDkuMzU5KSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0yMy4zOSA5LjM1OWMwIC44MjItLjAwNiAxLjc0My0uMDE2IDIuNzYyLS4wMSAxLjAyLS4wMTUgMi4yMjUtLjAxNSAzLjYxNVYyMS45YzAgMS4yNDgtLjE4NSAyLjM0OS0uNTU2IDMuMzAyYTYuMjI3IDYuMjI3IDAgMCAxLTEuNzEyIDIuNDVjLS43NzEuNjgtMS43NTMgMS4yMzYtMi45NDUgMS42NjctMS4xOTIuNDMxLTIuNjE1LjcyMy00LjI2OS44NzVsLS45MjgtMy45ODdhMTYuNzIgMTYuNzIgMCAwIDAgMi4yMzctLjQwNCA0LjY2IDQuNjYgMCAwIDAgMS42NzQtLjc5OWMuNTA3LS4zOTUuODktLjg5MiAxLjE1LTEuNDkxLjI1OC0uNTk5LjM4Ny0xLjM5LjM4Ny0yLjM3NCAwLS43OTIuMDAzLTEuNjI2LjAwOC0yLjUwNC4wMDUtLjg3Ny4wMDctMS43ODMuMDA3LTIuNzE2IDAtMS42MjQtLjAwNy0yLjkxNS0uMDIyLTMuODc0LS4wMTYtLjk1OS0uMDI4LTEuODU0LS4wMzgtMi42ODZoNS4wMzd6Ii8+PC9nPjwvc3ZnPg=='
-  let token, socket
+  let nameList, token, msgCenter, jikeIo
   let unreadCount = 0
 
   // 获取token
@@ -19,18 +19,38 @@
     })
   }
 
+  // 获取名单
+  function getSavedList () {
+    chrome.storage.local.get(['nameList'], function (result) {
+      nameList = result.nameList
+    })
+  }
+
+  // 储存名单
+  function setSavedList (value) {
+    chrome.storage.local.set({
+      nameList: value
+    })
+  }
+
   // 检查是否有token，然后链接websocket
   let scheduleJob = setInterval(function () {
     console.log('scheduleJob')
     if (!token) {
       getSavedToken()
     } else {
-      socket = io('wss://msgcenter.jike.ruguoapp.com?jike_access_token=' + token)
-      socket.on('connect', function () {
+      msgCenter = io('wss://msgcenter.jike.ruguoapp.com?jike_access_token=' + token)
+      msgCenter.on('connect', function () {
         console.log('connect')
       })
-      socket.on('message', processMessage)
-      socket.on('disconnect', function () { console.log('disconnect') })
+      msgCenter.on('message', processMessage)
+      msgCenter.on('disconnect', function () { console.log('disconnect') })
+      jikeIo = io('wss://jike-io.jike.ruguoapp.com?jike_access_token=' + token)
+      jikeIo.on('connect', function () {
+        console.log('connect')
+      })
+      jikeIo.on('message', processIo)
+      jikeIo.on('disconnect', function () { console.log('disconnect') })
       clearInterval(scheduleJob)
     }
   }, 10000)
@@ -38,6 +58,8 @@
   // 注册监听器
   // Win10原生通知点击后触发onButtonClicked，浏览器通知触发onClicked......
   window.addEventListener('load', function () {
+    getSavedToken()
+    getSavedList()
     chrome.runtime.onMessage.addListener(tokenReceived)
     chrome.notifications.onClosed.addListener(notificationClosed)
     chrome.notifications.onClicked.addListener(notificationClicked)
@@ -159,6 +181,15 @@
         title = data.actionItem.users[0].screenName + ' 回复了你的评论'
         message = (data.actionItem.content || '[图片]') + ' // ' + data.referenceItem.content
         break
+      case 'LIKE_ANSWER_COMMENT':
+        iconUrl = data.referenceItem.referenceImageUrl || data.actionItem.users[0].profileImageUrl
+        if (data.actionItem.usersCount === 1) {
+          title = data.actionItem.users[0].screenName + ' 赞了你的评论'
+        } else {
+          title = data.actionItem.users[0].screenName + ' 等' + data.actionItem.usersCount + '人赞了你评论'
+        }
+        message = data.referenceItem.content || '[图片]'
+        break
       default:
         iconUrl = jikeLogo
         title = '暂时不支持的消息'
@@ -167,13 +198,18 @@
         console.log(data)
         break
     }
-    chrome.notifications.create(processUrl(data.linkUrl), {
-      type: 'basic',
-      iconUrl,
-      title,
-      message,
-      contextMessage
-    })
+    try {
+      chrome.notifications.create(processUrl(data.linkUrl), {
+        type: 'basic',
+        iconUrl,
+        title,
+        message,
+        contextMessage
+      })
+    } catch (err) {
+      console.error(err)
+      console.log(iconUrl)
+    }
   }
 
   // 获取通知列表
@@ -198,21 +234,85 @@
   }
 
   // 处理websocket返回的信息
+  function processIo (data) {
+    let obj = JSON.parse(data)
+    console.log(obj)
+    chrome.notifications.create(obj.id, {
+      type: 'basic',
+      iconUrl: obj.user.avatarImage.picUrl,
+      title: '收到来自 ' + obj.user.screenName + ' 的私信',
+      message: obj.description
+    })
+  }
+
+  function processId (obj) {
+    let url = ''
+    let message
+    let iconUrl = obj.data.actor.avatarImage.picUrl
+    let screenName = obj.data.actor.screenName
+    // let id = obj.data.id
+    let action = obj.data.action
+    switch (action) {
+      case 'CREATE_ORIGINAL_POST':
+        // https://web.okjike.com/post-detail/5b743806509c5f001164f8a0/originalPost
+        // url = 'https://web.okjike.com/post-detail/' + id + '/originalPost'
+        message = screenName + ' 发动态了'
+        break
+      case 'CREATE_REPOST':
+      case 'PERSONAL_UPDATE_REPOST':
+      case 'REPOST':
+        // https://web.okjike.com/post-detail/5b74383ea8bcac001168594c/repost
+        // url = 'https://web.okjike.com/post-detail/' + id + '/repost'
+        message = screenName + ' 转发动态了'
+        break
+      case 'CREATE_ANSWER':
+        message = screenName + ' 答题了'
+        break
+      case 'CREATE_QUESTION':
+        message = screenName + ' 发问题了'
+        break
+      case 'USER_FOLLOW':
+      case 'SUBSCRIBE_TOPIC':
+        message = screenName + ' 关注了...'
+        return
+      default:
+        console.log('processId unknown')
+        console.log(action)
+    }
+    if (message === '') return
+    chrome.notifications.create(url, {
+      type: 'basic',
+      iconUrl,
+      title: '即刻APP',
+      message
+    })
+  }
+
+  // 处理websocket返回的信息
   function processMessage (data) {
     getSavedToken()
+    getSavedList()
     if (!token) return
     if (data.type === 'NOTIFICATION') {
       unreadCount = data.data.unreadCount
       getNotifications()
     } else if (data.type === 'PERSONAL_UPDATE') {
       // CREATE_ORIGINAL_POST, PERSONAL_UPDATE_REPOST, REPOST, CREATE_REPOST, SUBSCRIBE_TOPIC, USER_FOLLOW, CREATE_QUESTION, CREATE_ANSWER
-      console.log(data.data.id, data.data.actor.screenName, data.data.action)
-      // chrome.notifications.create(data.data.id, {
-      //   type: 'basic',
-      //   iconUrl: jikeLogo,
-      //   title: data.data.actor.screenName,
-      //   message: data.data.action
-      // })
+      console.log(data)
+      if (nameList) {
+        let nameArray = nameList.split(',')
+        for (let i = 0; i < nameArray.length; i++) {
+          if (nameArray[i] === data.data.actor.screenName) {
+            processId(data)
+          }
+        }
+      }
+    } else if (data.type === 'TICKET_MESSAGE_NOTIFICATION') {
+      console.log('TICKET_MESSAGE_NOTIFICATION')
+      console.log(data)
+    } else {
+      console.log('UNKNOWN MESSAGE:')
+      console.log(data)
     }
   }
 
@@ -222,8 +322,22 @@
       console.log('Token: ' + request.token)
       setSavedToken(request.token)
       sendResponse({
-        callback: request.token
+        token
       })
+    }
+    if (request.nameList) {
+      console.log('nameList: ' + request.nameList)
+      setSavedList(request.nameList)
+      sendResponse({
+        nameList
+      })
+    }
+    if (request.command) {
+      if (request.command === 'getNameList') {
+        sendResponse({
+          nameList
+        })
+      }
     }
   }
 
@@ -234,7 +348,7 @@
 
   // 通知被点击
   function notificationClicked (notID) {
-    if (notID) {
+    if (notID.includes('https://')) {
       chrome.tabs.create({
         url: notID
       })
@@ -244,7 +358,7 @@
 
   // 通知按钮被点击
   function notificationBtnClick (notID, iBtn) {
-    if (notID && iBtn === -1) {
+    if (notID.includes('https://') && iBtn === -1) {
       chrome.tabs.create({
         url: notID
       })

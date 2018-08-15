@@ -1,28 +1,31 @@
 {
-    "name": "Jike Notifications",
-    "version": "1.0",
-    "description": "Notify user when jike app has unread notifications.",
-    "background": {
-        "scripts": [
-          "socket.io.js",
-          "background.js"
-        ],
-        "persistent": true
-    },
-    "content_scripts": [{
-        "matches": [
-            "https://web.okjike.com/feed/*", "https://web.ruguoapp.com/feed/*", "http://web.okjike.com/feed/*", "http://web.ruguoapp.com/feed/*"
-        ],
-        "js": ["contentscript.js"]
-    }],
-    "permissions": [
-        "storage",
-        "notifications",
-        "tabs",
-        "https://app.jike.ruguoapp.com/",
-        "https://pic-txcdn.ruguoapp.com/",
-        "https://cdn.ruguoapp.com/",
-        "https://wx.qlogo.cn/"
+  "name": "Jike Notifications",
+  "version": "1.0",
+  "description": "Notify user when jike app has unread notifications.",
+  "background": {
+    "scripts": [
+      "socket.io.js",
+      "background.js"
     ],
-    "manifest_version": 2
+    "persistent": true
+  },
+  "browser_action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [{
+    "matches": [
+      "https://web.okjike.com/feed/*", "https://web.ruguoapp.com/feed/*", "http://web.okjike.com/feed/*", "http://web.ruguoapp.com/feed/*"
+    ],
+    "js": ["contentscript.js"]
+  }],
+  "permissions": [
+    "storage",
+    "notifications",
+    "tabs",
+    "https://app.jike.ruguoapp.com/",
+    "https://pic-txcdn.ruguoapp.com/",
+    "https://cdn.ruguoapp.com/",
+    "https://wx.qlogo.cn/"
+  ],
+  "manifest_version": 2
 }
