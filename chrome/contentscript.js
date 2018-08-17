@@ -1,7 +1,9 @@
 function init () {
   console.log('Jike Init')
   chrome.runtime.sendMessage({
-    token: window.localStorage['auth-token']
+    type: 'token',
+    accessToken: window.localStorage['access-token'],
+    authToken: window.localStorage['auth-token']
   })
 }
 
