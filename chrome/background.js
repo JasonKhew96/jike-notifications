@@ -3,6 +3,7 @@
   // 小秘书 POST https://support.jike.ruguoapp.com/conversation.history
   const jikeLogo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDAgNDAiPjxkZWZzPjxyZWN0IGlkPSJhIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHJ4PSIyMCIvPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkwLjM3NCUiIHgyPSI3OC42MDQlIiB5MT0iNjguMTk4JSIgeTI9IjY4LjE5OCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1RUMxRjkiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1RUI4RjkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjx1c2UgZmlsbD0iI0ZGRTQxMSIgeGxpbms6aHJlZj0iI2EiLz48cGF0aCBmaWxsPSJ1cmwoI2IpIiBkPSJNLjk4OSAyMC44M2EuNTIuNTIgMCAwIDEtLjA1NC4wMWwxLjcyIDEuNjc3YzEuNjU0LS4xNTIgMy4yNzMtLjU4NyA0LjQ2NS0xLjAxOCAxLjE5My0uNDMyIDIuMTc0LS45ODcgMi45NDUtMS42NjdhNi4yMjcgNi4yMjcgMCAwIDAgMS43MTMtMi40NWMuMzctLjk1NC41NTUtMi4wNTUuNTU1LTMuMzAzVjcuOTE1YzAtMS4zOS4wMDUtMi41OTUuMDE1LTMuNjE0LjAxLTEuMDIuMDE2LTEuOTQuMDE2LTIuNzYzTDEwLjQ0LjAwM2MwIC44MjEtLjAwNSAxLjc0MS0uMDE1IDIuNzYtLjAxIDEuMDE5LS4wMTUgMi4yMjQtLjAxNSAzLjYxNHY2LjE2NGMwIDEuMjQ4LS4xODUgMi4zNDktLjU1NSAzLjMwMmE2LjIyNyA2LjIyNyAwIDAgMS0xLjcxMyAyLjQ1Yy0uNzcuNjgtMS43NTIgMS4yMzYtMi45NDUgMS42NjctMS4xNzcuNDI2LTIuNTguNzE2LTQuMjA4Ljg3eiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIuOTQ5IDkuMzU5KSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0yMy4zOSA5LjM1OWMwIC44MjItLjAwNiAxLjc0My0uMDE2IDIuNzYyLS4wMSAxLjAyLS4wMTUgMi4yMjUtLjAxNSAzLjYxNVYyMS45YzAgMS4yNDgtLjE4NSAyLjM0OS0uNTU2IDMuMzAyYTYuMjI3IDYuMjI3IDAgMCAxLTEuNzEyIDIuNDVjLS43NzEuNjgtMS43NTMgMS4yMzYtMi45NDUgMS42NjctMS4xOTIuNDMxLTIuNjE1LjcyMy00LjI2OS44NzVsLS45MjgtMy45ODdhMTYuNzIgMTYuNzIgMCAwIDAgMi4yMzctLjQwNCA0LjY2IDQuNjYgMCAwIDAgMS42NzQtLjc5OWMuNTA3LS4zOTUuODktLjg5MiAxLjE1LTEuNDkxLjI1OC0uNTk5LjM4Ny0xLjM5LjM4Ny0yLjM3NCAwLS43OTIuMDAzLTEuNjI2LjAwOC0yLjUwNC4wMDUtLjg3Ny4wMDctMS43ODMuMDA3LTIuNzE2IDAtMS42MjQtLjAwNy0yLjkxNS0uMDIyLTMuODc0LS4wMTYtLjk1OS0uMDI4LTEuODU0LS4wMzgtMi42ODZoNS4wMzd6Ii8+PC9nPjwvc3ZnPg=='
   let configData = {}
+  let msgCenter, jikeIo
   // 获取config
   function getConfig (key) {
     chrome.storage.local.get(key, function (result) {
@@ -20,45 +21,66 @@
     chrome.storage.local.set(obj, callback)
   }
 
-  // 检查是否有token，然后链接websocket
-  function init () {
-    getConfig('accessToken')
-    getConfig('nameList')
-    let msgCenter, jikeIo
-    let accessToken = configData['accessToken']
+  function initMsgCenter (accessToken) {
     if (typeof accessToken !== 'undefined') {
       msgCenter = io('wss://msgcenter.jike.ruguoapp.com?x-jike-access-token=' + accessToken)
       msgCenter.on('connect', function () {
         console.log('connect msgCenter')
       })
       msgCenter.on('message', processMessage)
-      msgCenter.on('error', function () {
+      msgCenter.on('connect_error', (error) => {
+        console.log('connect_error')
+        console.log(error)
         msgCenter.disconnect()
-        setInterval(init, 10000)
+        scheduleJob = setInterval(init, 120000)
       })
-      msgCenter.on('connect_error', function () {
-        msgCenter.disconnect()
-        setInterval(init, 10000)
+      msgCenter.on('disconnect', function (reason) {
+        console.log('disconnect msgCenter')
+        console.log(reason)
+        if (reason === 'transport close') {
+          msgCenter.disconnect()
+          scheduleJob = setInterval(init, 120000)
+        }
       })
-      msgCenter.on('disconnect', function () { console.log('disconnect msgCenter') })
+    }
+  }
 
+  function initJikeIo (accessToken) {
+    if (typeof accessToken !== 'undefined') {
       jikeIo = io('wss://jike-io.jike.ruguoapp.com?x-jike-access-token=' + accessToken)
       jikeIo.on('connect', function () {
         console.log('connect jikeIo')
       })
-      jikeIo.on('error', function () {
-        jikeIo.disconnect()
-        setInterval(init, 10000)
-      })
-      jikeIo.on('connect_error', function () {
-        jikeIo.disconnect()
-        setInterval(init, 10000)
-      })
       jikeIo.on('message', processIo)
-      jikeIo.on('disconnect', function () { console.log('disconnect jikeIo') })
-
-      clearInterval(scheduleJob)
+      jikeIo.on('connect_error', (error) => {
+        console.log('connect_error')
+        console.log(error)
+        jikeIo.disconnect()
+        scheduleJob = setInterval(init, 120000)
+      })
+      jikeIo.on('disconnect', function (reason) {
+        console.log('disconnect jikeIo')
+        console.log(reason)
+        if (reason === 'transport close') {
+          jikeIo.disconnect()
+          scheduleJob = setInterval(init, 120000)
+        }
+      })
     }
+  }
+
+  // 检查是否有token，然后链接websocket
+  function init () {
+    getConfig('accessToken')
+    getConfig('nameList')
+    let accessToken = configData['accessToken']
+    if (typeof msgCenter === 'undefined' || msgCenter.disconnected) {
+      initMsgCenter(accessToken)
+    }
+    if (typeof jikeIo === 'undefined' || jikeIo.disconnected) {
+      initJikeIo(accessToken)
+    }
+    clearInterval(scheduleJob)
   }
 
   let scheduleJob = setInterval(init, 10000)
