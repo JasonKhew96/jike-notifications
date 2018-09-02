@@ -42,7 +42,7 @@ function refreshToken () {
 
 function getProfile () {
   let accessToken = configData['accessToken']
-  if (typeof accessToken !== 'undefined') {
+  if (accessToken !== '') {
     let req = {
       'method': 'GET',
       'headers': {
@@ -52,16 +52,20 @@ function getProfile () {
     return window.fetch('https://app.jike.ruguoapp.com/1.0/users/profile', req)
       .then(resp => {
         if (resp.ok) {
-          return ''
+          return true
         } else if (resp.status === 401) {
-          refreshToken()
+          // refreshToken()
+          setConfig('accessToken', '')
+          return false
         }
       })
+  } else {
+      return false
   }
 }
 
 function initMsgCenter (accessToken) {
-  if (typeof accessToken !== 'undefined') {
+  if (accessToken !== '') {
     msgCenter = io('wss://msgcenter.jike.ruguoapp.com?x-jike-access-token=' + accessToken)
     msgCenter.on('connect', function () {
       console.log('connect msgCenter')
@@ -85,7 +89,7 @@ function initMsgCenter (accessToken) {
 }
 
 function initJikeIo (accessToken) {
-  if (typeof accessToken !== 'undefined') {
+  if (accessToken !== '') {
     jikeIo = io('wss://jike-io.jike.ruguoapp.com?x-jike-access-token=' + accessToken)
     jikeIo.on('connect', function () {
       console.log('connect jikeIo')
@@ -113,7 +117,10 @@ async function init () {
   getConfig('authToken')
   getConfig('accessToken')
   getConfig('nameList')
-  await getProfile()
+  let result = await getProfile()
+  if (!result) {
+      return
+  }
   let accessToken = configData['accessToken']
   if (typeof msgCenter === 'undefined' || msgCenter.disconnected) {
     initMsgCenter(accessToken)
@@ -286,7 +293,7 @@ function processData (data) {
 // 获取通知列表
 function getNotifications (unreadCount) {
   let accessToken = configData['accessToken']
-  if (typeof accessToken !== 'undefined') {
+  if (accessToken !== '') {
     let req = {
       'method': 'GET',
       'headers': {
