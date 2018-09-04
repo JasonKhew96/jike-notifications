@@ -30,11 +30,14 @@ function refreshToken () {
     }
     return window.fetch('https://app.jike.ruguoapp.com/app_auth_tokens.refresh', req).then(resp => {
       if (resp.ok) {
-        return resp.json().then(resp => {
+        resp.json().then(resp => {
           setConfig('accessToken', resp['x-jike-access-token'])
           setConfig('authToken', resp['x-jike-refresh-token'])
-          return resp
+          return true
         })
+      } else {
+        setConfig('accessToken', '')
+        return false
       }
     })
   }
@@ -54,13 +57,11 @@ function getProfile () {
         if (resp.ok) {
           return true
         } else if (resp.status === 401) {
-          // refreshToken()
-          setConfig('accessToken', '')
-          return false
+          return refreshToken()
         }
       })
   } else {
-      return false
+    return false
   }
 }
 
@@ -119,7 +120,7 @@ async function init () {
   getConfig('nameList')
   let result = await getProfile()
   if (!result) {
-      return
+    return
   }
   let accessToken = configData['accessToken']
   if (typeof msgCenter === 'undefined' || msgCenter.disconnected) {
@@ -301,16 +302,21 @@ function getNotifications (unreadCount) {
         'app-version': '4.10.0'
       }
     }
-    window.fetch('https://app.jike.ruguoapp.com/1.0/notifications/list', req)
-      .then(function (resp) {
-        return resp.json()
-      }).then(function (resp) {
-        let datas = resp.data
-        for (let i = 0; i < unreadCount; i++) {
-          let data = datas[i]
-          processData(data)
+    return window.fetch('https://app.jike.ruguoapp.com/1.0/notifications/list', req).then(resp => {
+      if (resp.ok) {
+        return resp.json().then(function (resp) {
+          let datas = resp.data
+          for (let i = 0; i < unreadCount; i++) {
+            let data = datas[i]
+            processData(data)
+          }
+        })
+      } else {
+        if (refreshToken()) {
+          getNotifications(unreadCount)
         }
-      })
+      }
+    })
   }
 }
 
